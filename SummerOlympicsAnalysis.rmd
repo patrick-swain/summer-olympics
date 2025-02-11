@@ -1,0 +1,75 @@
+---
+title: "Summer Olympics Analysis"
+name: Patrick Swain
+date: "2024-08-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+install.packages("dplyr")
+install.packages("ggplot2")
+library(dplyr, ggplot2)
+```
+
+```{r}
+olympics <- read.csv("olympics_data.csv")
+```
+
+```{r}
+olympics2016 <- filter(olympics,year == 2016)
+```
+
+```{r}
+olympics2016 <- olympics2016 %>% mutate(score=gold*3+silver*2+bronze*1) #scoring system
+olympics2016 <- olympics2016 %>% mutate(score_per_million=(score/population)) #score per million population
+olympics2016 <- olympics2016 %>% mutate(score_per_gdp=(score/gdp)*100) #score per $1 billion GDP
+```
+
+```{r}
+olympics2016score <- slice_max(filter(olympics2016, year == 2016),score, n=10) #Top 10 scorers in 2016
+olympics2016scorepc <- slice_max(filter(olympics2016, year == 2016),score_per_million, n=10) #Top 10 scorers in 2016 per capita
+olympics2016scoregdp <- slice_max(filter(olympics2016, year == 2016),score_per_gdp, n=10) #Top 10 scorers in 2016 per $1 billion GDP
+```
+
+```{r}
+#Bar graphs
+
+library(ggplot2)
+
+ggplot(olympics2016score, aes(x = reorder(country, score), y = score)) + geom_bar(stat = "identity") + coord_flip() + labs(title = "Top 10 Countries by Score in the 2016 Olympics",x = "Country", y = "Score")
+
+ggplot(olympics2016scorepc, aes(x = reorder(country, score_per_million), y = score_per_million)) + geom_bar(stat = "identity") + coord_flip() + labs(title = "Top 10 Countries by Score per Million Residents in the 2016 Olympics",x = "Country", y = "Score per Million Residents")
+
+ggplot(olympics2016scoregdp, aes(x = reorder(country, score_per_gdp), y = score_per_gdp)) + coord_flip() + geom_bar(stat = "identity") + labs(title = "Top 10 Countries by Score per $1 billion GDP in the 2016 Olympics",x = "Country", y = "Score per $1 billion GDP")
+```
+
+```{r}
+#Defining continent metrics. I felt I should average instead of add GDP metric
+continentscores <- olympics2016 %>% group_by(continent) %>% summarize(
+  continentscore = sum(score, na.rm = TRUE),
+  continentscorepc = sum(score_per_million, na.rm = TRUE),
+  continentscoregdp = mean(score_per_gdp, na.rm = TRUE) )
+
+#Continent bar graphs
+ggplot(continentscores, aes(x = reorder(continent, continentscore), y = continentscore)) + coord_flip() + geom_bar(stat = "identity") + labs(title = "Continents by Score in the 2016 Olympics",x = "Continent", y = "Score")
+
+ggplot(continentscores, aes(x = reorder(continent, continentscorepc), y = continentscorepc)) + coord_flip() + geom_bar(stat = "identity") + labs(title = "Continents by Score per Million Residents in the 2016 Olympics",x = "Continent", y = "Score per Million Residents")
+
+ggplot(continentscores, aes(x = reorder(continent, continentscoregdp), y = continentscoregdp)) + coord_flip() + geom_bar(stat = "identity") + labs(title = "Continents by Average Score per $1 Billion GDP in the 2016 Olympics",x = "Continent", y = "Average Score per $1 Billion GDP")
+```
+
+```{r}
+#Creating variables for GDP per capita and GDP per capita quartile
+olympics2016 <- olympics2016 %>% mutate(gdp_percapita = gdp/population)
+olympics2016 <- olympics2016 %>% mutate(gdp_percapita_quartile = ntile(gdp_percapita,4))
+
+#Bar graph
+ggplot(olympics2016, aes(x = gdp_percapita_quartile, y = score/population)) + geom_bar(stat = "identity") + labs(title = "GDP per Capita Quartiles by Average Score per Capita",x = "Quartile", y = "Average Score per Capita")
+```
